@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>C Code Analyzer</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #1f4037, #99f2c8);
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+
+        textarea {
+            width: 80%;
+            height: 250px;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 25px;
+            border-radius: 20px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .error { color: #ff6b6b; }
+        .suggestion { color: #ffd93d; }
+        .success { color: #6bff95; }
+    </style>
+</head>
+<body>
+
+<h1>✨ Advanced C Code Analyzer</h1>
+
+<textarea id="code" placeholder="Paste your C code here..."></textarea>
+<br>
+
+<button onclick="analyze()">Analyze</button>
+<button onclick="loadSample()">Load Sample Code</button>
+
+<div class="result" id="output"></div>
+
+<script>
+
+function loadSample() {
+    document.getElementById("code").value = `#include <stdio.h>
+
+int main() {
+    int i;
+
+    for(i = 0; i < 10; i++) {
+        printf("%d\\n", i);
+    }
+
+    return 0;
+}`;
+}
+
+function analyze() {
+
+    let code = document.getElementById("code").value;
+    let output = document.getElementById("output");
+
+    let errors = [];
+    let suggestions = [];
+
+    // Loop detection
+    let loopCount = (code.match(/\bfor\b|\bwhile\b|\bdo\b/g) || []).length;
+
+    // Nested loop detection (basic)
+    let nestedLoop = /for\s*\(.*?\)\s*\{[^{}]*for\s*\(/s.test(code);
+
+    // Function detection (better match)
+    let functionCount = (code.match(/\b(int|float|double|char|void)\s+\w+\s*\([^)]*\)\s*\{/g) || []).length;
+
+    // Brace check
+    if ((code.match(/{/g) || []).length !== (code.match(/}/g) || []).length) {
+        errors.push("Mismatched curly braces { }");
+    }
+
+    // Parenthesis check
+    if ((code.match(/\(/g) || []).length !== (code.match(/\)/g) || []).length) {
+        errors.push("Mismatched parentheses ( )");
+    }
+
+    // Missing semicolon check
+    let lines = code.split("\n");
+    lines.forEach((line, index) => {
+        let trimmed = line.trim();
+        if (
+            trimmed &&
+            !trimmed.startsWith("#") &&
+            !trimmed.endsWith(";") &&
+            !trimmed.endsWith("{") &&
+            !trimmed.endsWith("}") &&
+            !trimmed.startsWith("//") &&
+            !trimmed.includes("for") &&
+            !trimmed.includes("while") &&
+            !trimmed.includes("if") &&
+            !trimmed.includes("else")
+        ) {
+            errors.push("Possible missing semicolon at line " + (index + 1));
+        }
+    });
+
+    // Infinite loop
+    let infiniteLoop = /while\s*\(\s*1\s*\)/.test(code) || /for\s*\(\s*;\s*;\s*\)/.test(code);
+    if (infiniteLoop) {
+        errors.push("Possible infinite loop detected");
+    }
+
+    // Complexity estimation
+    let complexity = "O(1)";
+    if (nestedLoop) complexity = "O(n²) or higher (Nested loops detected)";
+    else if (loopCount === 1) complexity = "O(n)";
+    else if (loopCount > 1) complexity = "O(n^k)";
+
+    // Efficiency suggestions
+    if (code.includes("printf") && loopCount > 0) {
+        suggestions.push("Avoid excessive printf inside loops (can slow execution).");
+    }
+
+    if (nestedLoop) {
+        suggestions.push("Consider optimizing nested loops (use hashing or precomputation).");
+    }
+
+    if (loopCount === 0) {
+        suggestions.push("No loops detected. Code runs in constant time.");
+    }
+
+    // Display results
+    let resultHTML = `
+        <h2>📊 Analysis Report</h2>
+        <p><strong>Loop Count:</strong> ${loopCount}</p>
+        <p><strong>Function Count:</strong> ${functionCount}</p>
+        <p><strong>Estimated Complexity:</strong> ${complexity}</p>
+
+        <h3>🚨 Errors</h3>
+    `;
+
+    if (errors.length === 0) {
+        resultHTML += `<p class="success">No obvious syntax errors detected.</p>`;
+    } else {
+        errors.forEach(err => {
+            resultHTML += `<p class="error">- ${err}</p>`;
+        });
+    }
+
+    resultHTML += `<h3>💡 Efficiency Suggestions</h3>`;
+
+    if (suggestions.length === 0) {
+        resultHTML += `<p class="success">Code looks efficient for its structure.</p>`;
+    } else {
+        suggestions.forEach(sug => {
+            resultHTML += `<p class="suggestion">- ${sug}</p>`;
+        });
+    }
+
+    output.innerHTML = resultHTML;
+}
+
+</script>
+
+</body>
+</html>
